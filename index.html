@@ -1,1136 +1,855 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>중학교 과학 전기와 자기 탐구 웹앱</title>
-    <!-- Tailwind CSS -->
+    <title>디지털 과학 탐구실 - 전기 회로 가상실험 및 Firebase DB</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #020617;
-            color: #f8fafc;
-            user-select: none;
+            font-family: 'Noto Sans KR', sans-serif;
         }
-        /* Custom Glowing Visual Effects */
-        .glow-amber {
-            filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.75));
+        .glow-bulb {
+            filter: drop-shadow(0px 0px 15px rgba(251, 191, 36, 0.8));
         }
-        .glow-cyan {
-            filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.75));
+        .wire-animated {
+            stroke-dasharray: 8;
+            animation: dash 1s linear infinite;
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #090d16;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #334155;
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -16;
+            }
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-    <!-- Navigation Header -->
-    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-14">
-                <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                        <i class="fa-solid fa-bolt text-slate-950 text-lg font-black"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-black text-sm sm:text-base text-slate-100 leading-tight">전기와 자기 <span class="text-xs font-normal text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full ml-1">중2 과학</span></h1>
-                        <p class="text-[10px] text-slate-400 hidden sm:block">직렬 · 병렬 전기 회로 가상 탐구실</p>
-                    </div>
+    <!-- Header / Navigation -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                    <i class="fa-solid fa-bolt"></i>
                 </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">디지털 과학 탐구실</h1>
+                    <p class="text-xs text-slate-400">중학교 2학년 과학 | 전기와 자기 (Firebase DB 연동)</p>
+                </div>
+            </div>
 
-                <!-- Navigation Tabs -->
-                <nav class="flex space-x-1 sm:space-x-2 bg-slate-950 p-1 rounded-xl border border-slate-800/80">
-                    <button onclick="switchTab('lab')" id="tab-btn-lab" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 bg-amber-500 text-slate-950 shadow">
-                        <i class="fa-solid fa-flask text-xs"></i>
-                        <span>가상 실험실</span>
-                    </button>
-                    <button onclick="switchTab('guide')" id="tab-btn-guide" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center space-x-1">
-                        <i class="fa-solid fa-book-open text-xs"></i>
-                        <span>개념 정리</span>
-                    </button>
-                    <button onclick="switchTab('worksheet')" id="tab-btn-worksheet" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center space-x-1">
-                        <i class="fa-solid fa-file-pen text-xs"></i>
-                        <span>탐구 활동지</span>
-                    </button>
-                    <button onclick="switchTab('quiz')" id="tab-btn-quiz" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center space-x-1">
-                        <i class="fa-solid fa-circle-question text-xs"></i>
-                        <span>형성 평가</span>
-                    </button>
-                </nav>
+            <!-- Firebase Connection Status Badge -->
+            <div class="flex items-center space-x-3">
+                <div id="dbStatusBadge" class="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700 text-xs">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="statusDot"></span>
+                    <span class="text-slate-300 font-medium" id="statusText">Firebase 연결 중...</span>
+                </div>
             </div>
         </div>
     </header>
 
+    <!-- Tab Navigation -->
+    <div class="bg-slate-800/60 border-b border-slate-700/60">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 py-2">
+            <button onclick="switchTab('simulator')" id="tabBtn-simulator" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 bg-indigo-600 text-white transition-all">
+                <i class="fa-solid fa-flask"></i>
+                <span>가상 회로 실험실</span>
+            </button>
+            <button onclick="switchTab('dbLogs')" id="tabBtn-dbLogs" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 bg-slate-700/50 text-slate-300 hover:bg-slate-700 transition-all">
+                <i class="fa-solid fa-database"></i>
+                <span>실시간 DB 데이터 로그</span>
+            </button>
+            <button onclick="switchTab('report')" id="tabBtn-report" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 bg-slate-700/50 text-slate-300 hover:bg-slate-700 transition-all">
+                <i class="fa-solid fa-file-pen"></i>
+                <span>탐구 보고서 제출 (DB 연동)</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Main Content Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-2 sm:p-3">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
-        <!-- ==================== TAB 1: VIRTUAL LAB ==================== -->
-        <div id="tab-content-lab" class="space-y-2">
+        <!-- TAB 1: CIRCUIT SIMULATOR -->
+        <section id="tab-simulator" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-            <!-- Circuit Type Selector Header -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2 flex flex-wrap items-center justify-between gap-2 shadow-lg">
-                <div class="flex items-center space-x-2">
-                    <span class="text-xs font-bold text-slate-300"><i class="fa-solid fa-diagram-project text-cyan-400 mr-1.5"></i>회로 연결 방식:</span>
-                    <div class="flex space-x-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                        <button onclick="setCircuitMode('series')" id="mode-btn-series" class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-slate-950 shadow transition">
-                            ⚡ 직렬 연결 (Series)
-                        </button>
-                        <button onclick="setCircuitMode('parallel')" id="mode-btn-parallel" class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition">
-                            🔀 병렬 연결 (Parallel)
-                        </button>
+                <!-- Left Control Panel -->
+                <div class="lg:col-span-4 bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-6 shadow-xl">
+                    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-sliders text-indigo-400"></i>
+                            <span>회로 조건 조절</span>
+                        </h2>
+                        <span class="text-xs bg-indigo-900/60 text-indigo-300 px-2 py-1 rounded border border-indigo-700">실시간 반영</span>
                     </div>
-                </div>
 
-                <!-- Main Switch Control Button -->
-                <div class="flex items-center space-x-2">
-                    <button onclick="toggleMainSwitch()" id="btn-main-switch" class="px-3 py-1 rounded-lg text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5">
-                        <i class="fa-solid fa-power-off"></i>
-                        <span id="switch-text-label">스위치: 닫힘 (ON)</span>
+                    <!-- Connection Type Switcher -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">연결 방식 선택</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="typeSeriesBtn" onclick="setCircuitType('series')" class="py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-indigo-500 bg-indigo-600/30 text-white transition-all">
+                                <i class="fa-solid fa-link"></i>
+                                <span>직렬 연결</span>
+                            </button>
+                            <button id="typeParallelBtn" onclick="setCircuitType('parallel')" class="py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-slate-700 bg-slate-900/50 text-slate-400 hover:bg-slate-700 transition-all">
+                                <i class="fa-solid fa-code-branch"></i>
+                                <span>병렬 연결</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Voltage Control Slider -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-slate-300">전원 전압 ($V_{전체}$)</label>
+                            <span class="text-sm font-bold text-amber-400" id="valVoltage">9.0 V</span>
+                        </div>
+                        <input type="range" id="inputVoltage" min="1.0" max="24.0" step="0.5" value="9.0" oninput="updateCircuit()" class="w-full accent-amber-500 bg-slate-700 rounded-lg cursor-pointer h-2">
+                    </div>
+
+                    <!-- Resistance 1 Control -->
+                    <div class="space-y-2 border-t border-slate-700/60 pt-4">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-slate-300">전구 1 저항 ($R_1$)</label>
+                            <span class="text-sm font-bold text-sky-400" id="valR1">10.0 Ω</span>
+                        </div>
+                        <input type="range" id="inputR1" min="1.0" max="50.0" step="1.0" value="10.0" oninput="updateCircuit()" class="w-full accent-sky-500 bg-slate-700 rounded-lg cursor-pointer h-2">
+                    </div>
+
+                    <!-- Resistance 2 Control -->
+                    <div class="space-y-2 border-t border-slate-700/60 pt-4">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-slate-300">전구 2 저항 ($R_2$)</label>
+                            <span class="text-sm font-bold text-emerald-400" id="valR2">10.0 Ω</span>
+                        </div>
+                        <input type="range" id="inputR2" min="1.0" max="50.0" step="1.0" value="10.0" oninput="updateCircuit()" class="w-full accent-emerald-500 bg-slate-700 rounded-lg cursor-pointer h-2">
+                    </div>
+
+                    <!-- Switch Controls -->
+                    <div class="pt-2 border-t border-slate-700 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-300">메인 스위치</span>
+                            <button id="mainSwitchBtn" onclick="toggleMainSwitch()" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                <i class="fa-solid fa-power-off mr-1"></i> ON
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Save Data to Firebase Button -->
+                    <button onclick="saveCurrentDataToFirebase()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>현재 측정값 DB에 기록하기</span>
                     </button>
                 </div>
-            </div>
 
-            <!-- Two-Column Grid (Left: Visual Canvas & Dashboard / Right: Variable Controls) -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-stretch">
-
-                <!-- LEFT SIDE (7 Cols): Dynamic SVG Circuit Canvas & Realtime Dashboard -->
-                <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between shadow-xl relative overflow-hidden min-h-[350px]">
-                    
-                    <div class="flex justify-between items-center mb-1 z-10">
-                        <div class="flex items-center space-x-2">
-                            <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            <h2 class="font-bold text-slate-200 text-xs sm:text-sm" id="lab-title-text">직렬 회로 시뮬레이션</h2>
+                <!-- Right Circuit Graphic & Real-time Gauges -->
+                <div class="lg:col-span-8 space-y-6">
+                    <!-- Graphic Visualizer Canvas/SVG -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col items-center justify-center min-h-[380px]">
+                        <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="circuitModeTag">직렬 회로 시뮬레이션 중</span>
                         </div>
-                        <div class="flex items-center space-x-2 text-[10px] text-slate-400">
-                            <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block mr-1"></span>전자(―)</span>
-                            <span class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1"></span>전구 밝기</span>
-                        </div>
-                    </div>
 
-                    <!-- SVG Circuit Canvas Area -->
-                    <div class="w-full flex-grow flex items-center justify-center relative bg-slate-950/90 rounded-lg border border-slate-800/90 p-1 my-1 min-h-[190px] max-h-[220px] shadow-inner">
-                        <svg id="circuit-svg" class="w-full h-full max-h-[210px]" viewBox="0 0 700 380" preserveAspectRatio="xMidYMid meet">
-                            <!-- Dynamic SVG Circuit Elements JavaScript rendered -->
+                        <!-- SVG Circuit Diagram -->
+                        <svg id="circuitSvg" viewBox="0 0 600 320" class="w-full max-w-xl h-auto">
+                            <!-- Dynamic Content updated by JS -->
                         </svg>
-
-                        <!-- Toast Notification Overlay -->
-                        <div id="canvas-toast" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-slate-900/95 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-lg text-[11px] font-semibold backdrop-blur shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-20">
-                            <i class="fa-solid fa-circle-info mr-1 text-amber-400"></i><span id="toast-msg">알림 메시지</span>
-                        </div>
                     </div>
 
-                    <!-- Realtime Physics Dashboard -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 z-10">
-                        <div class="bg-slate-950/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <p class="text-[9px] sm:text-[10px] text-slate-400 font-medium">전체 전압 (V)</p>
-                            <p class="text-xs sm:text-sm font-black text-amber-400" id="stat-voltage">3.0 V</p>
+                    <!-- Real-time Quantitative Telemetry Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                            <span class="text-xs font-medium text-slate-400 mb-1">전체 합성저항 ($R_{eq}$)</span>
+                            <span class="text-xl font-extrabold text-indigo-400" id="gaugeReq">20.0 Ω</span>
                         </div>
-                        <div class="bg-slate-950/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <p class="text-[9px] sm:text-[10px] text-slate-400 font-medium">합성저항 (R)</p>
-                            <p class="text-xs sm:text-sm font-black text-cyan-400" id="stat-resistance">20.0 Ω</p>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                            <span class="text-xs font-medium text-slate-400 mb-1">전체 전류 ($I_{total}$)</span>
+                            <span class="text-xl font-extrabold text-amber-400" id="gaugeItotal">0.45 A</span>
                         </div>
-                        <div class="bg-slate-950/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <p class="text-[9px] sm:text-[10px] text-slate-400 font-medium">전체 전류 세기 (I)</p>
-                            <p class="text-xs sm:text-sm font-black text-emerald-400" id="stat-current">0.15 A (150 mA)</p>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                            <span class="text-xs font-medium text-slate-400 mb-1">전구 1 소비전력 ($P_1$)</span>
+                            <span class="text-xl font-extrabold text-sky-400" id="gaugeP1">2.03 W</span>
+                            <span class="text-[10px] text-slate-500 mt-0.5" id="subGauge1">V1: 4.5V / I1: 0.45A</span>
                         </div>
-                        <div class="bg-slate-950/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <p class="text-[9px] sm:text-[10px] text-slate-400 font-medium">회로 상태</p>
-                            <p class="text-[11px] sm:text-xs font-bold text-emerald-400 mt-0.5" id="stat-status">정상 작동</p>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                            <span class="text-xs font-medium text-slate-400 mb-1">전구 2 소비전력 ($P_2$)</span>
+                            <span class="text-xl font-extrabold text-emerald-400" id="gaugeP2">2.03 W</span>
+                            <span class="text-[10px] text-slate-500 mt-0.5" id="subGauge2">V2: 4.5V / I2: 0.45A</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- RIGHT SIDE (5 Cols): Variable Controls Dedicated Panel -->
-                <div class="md:col-span-5 space-y-2 flex flex-col justify-between">
-                    
-                    <!-- Voltage & Resistance Control Card -->
-                    <div class="bg-slate-900 border border-amber-500/30 rounded-xl p-2.5 shadow-xl space-y-2 relative overflow-hidden">
-                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                            <h3 class="font-bold text-xs text-slate-100 flex items-center">
-                                <i class="fa-solid fa-sliders text-amber-400 mr-1.5 text-xs"></i>전압 & 저항 조절 (변인)
-                            </h3>
-                            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">실시간 반영</span>
-                        </div>
-
-                        <!-- Voltage Control Box -->
-                        <div class="space-y-1 bg-slate-950/90 p-2 rounded-lg border border-slate-800">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[11px] text-amber-300 font-bold flex items-center">
-                                    <i class="fa-solid fa-bolt mr-1 text-amber-400"></i>전원 전압 (V)
-                                </span>
-                                <div class="flex items-center space-x-1">
-                                    <button onclick="adjustVoltage(-0.5)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700 flex items-center justify-center text-[10px] font-bold transition active:scale-95">
-                                        <i class="fa-solid fa-minus"></i>
-                                    </button>
-                                    <span id="val-voltage-num" class="w-14 text-center font-black text-amber-400 text-xs bg-slate-900 py-0.5 rounded border border-slate-800">3.0 V</span>
-                                    <button onclick="adjustVoltage(0.5)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700 flex items-center justify-center text-[10px] font-bold transition active:scale-95">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Voltage Quick Presets -->
-                            <div class="flex items-center justify-between gap-1 pt-0.5">
-                                <span class="text-[9px] text-slate-400 font-medium">빠른선택:</span>
-                                <div class="flex flex-wrap gap-0.5">
-                                    <button id="v-preset-1.5" onclick="setVoltage(1.5)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">1.5V</button>
-                                    <button id="v-preset-3.0" onclick="setVoltage(3.0)" class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-500 text-slate-950 shadow transition">3.0V</button>
-                                    <button id="v-preset-6.0" onclick="setVoltage(6.0)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">6.0V</button>
-                                    <button id="v-preset-9.0" onclick="setVoltage(9.0)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">9.0V</button>
-                                    <button id="v-preset-12.0" onclick="setVoltage(12.0)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">12.0V</button>
-                                </div>
-                            </div>
-
-                            <input type="range" id="input-voltage" min="1.5" max="12.0" value="3.0" step="0.5" oninput="updateLabParams()" class="w-full accent-amber-400 bg-slate-800 h-1 rounded cursor-pointer">
-                        </div>
-
-                        <!-- Resistance Control Box -->
-                        <div class="space-y-1 bg-slate-950/90 p-2 rounded-lg border border-slate-800">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[11px] text-cyan-300 font-bold flex items-center">
-                                    <i class="fa-solid fa-omega mr-1 text-cyan-400"></i>전구 저항 (Ω)
-                                </span>
-                                <div class="flex items-center space-x-1">
-                                    <button onclick="adjustResistance(-1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-cyan-400 hover:text-slate-950 text-slate-200 border border-slate-700 flex items-center justify-center text-[10px] font-bold transition active:scale-95">
-                                        <i class="fa-solid fa-minus"></i>
-                                    </button>
-                                    <span id="val-resistance-num" class="w-14 text-center font-black text-cyan-400 text-xs bg-slate-900 py-0.5 rounded border border-slate-800">10 Ω</span>
-                                    <button onclick="adjustResistance(1)" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-cyan-400 hover:text-slate-950 text-slate-200 border border-slate-700 flex items-center justify-center text-[10px] font-bold transition active:scale-95">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Resistance Quick Presets -->
-                            <div class="flex items-center justify-between gap-1 pt-0.5">
-                                <span class="text-[9px] text-slate-400 font-medium">빠른선택:</span>
-                                <div class="flex flex-wrap gap-0.5">
-                                    <button id="r-preset-5" onclick="setResistance(5)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">5Ω</button>
-                                    <button id="r-preset-10" onclick="setResistance(10)" class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-cyan-400 text-slate-950 shadow transition">10Ω</button>
-                                    <button id="r-preset-15" onclick="setResistance(15)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">15Ω</button>
-                                    <button id="r-preset-20" onclick="setResistance(20)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">20Ω</button>
-                                    <button id="r-preset-30" onclick="setResistance(30)" class="px-1.5 py-0.5 text-[9px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">30Ω</button>
-                                </div>
-                            </div>
-
-                            <input type="range" id="input-resistance" min="2" max="30" value="10" step="1" oninput="updateLabParams()" class="w-full accent-cyan-400 bg-slate-800 h-1 rounded cursor-pointer">
-                        </div>
-                    </div>
-
-                    <!-- Bulb Configuration & Break Fault Simulation Panel -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-xl space-y-2">
-                        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                            <h3 class="font-bold text-xs text-slate-200 flex items-center">
-                                <i class="fa-regular fa-lightbulb text-yellow-400 mr-1.5"></i>전구 연결 & 단선 가상 실험
-                            </h3>
-                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" id="bulb-count-badge">전구 2개 (10 Ω)</span>
-                        </div>
-
-                        <!-- Bulb Count Select -->
-                        <div class="flex justify-between items-center">
-                            <span class="text-[11px] text-slate-300 font-medium">전구 개수</span>
-                            <div class="flex gap-1 w-1/2">
-                                <button id="b-preset-1" onclick="setBulbs(1)" class="flex-1 py-0.5 text-[11px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">1개</button>
-                                <button id="b-preset-2" onclick="setBulbs(2)" class="flex-1 py-0.5 text-[11px] font-bold rounded bg-yellow-400 text-slate-950 shadow transition">2개</button>
-                                <button id="b-preset-3" onclick="setBulbs(3)" class="flex-1 py-0.5 text-[11px] font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">3개</button>
-                            </div>
-                        </div>
-
-                        <!-- Individual Bulb Break/Fault Buttons -->
-                        <div class="pt-1.5 border-t border-slate-800/80">
-                            <label class="text-[10px] text-slate-400 block mb-1 font-medium">개별 전구 단선(고장/제거) 테스트:</label>
-                            <div class="grid grid-cols-3 gap-1.5" id="bulb-break-btns">
-                                <button onclick="toggleBulbBreak(0)" id="btn-break-0" class="p-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex flex-col items-center justify-center">
-                                    <span>💡 전구 A</span>
-                                    <span class="text-[9px] text-emerald-400 font-bold mt-0.5" id="break-status-0">정상</span>
-                                </button>
-                                <button onclick="toggleBulbBreak(1)" id="btn-break-1" class="p-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex flex-col items-center justify-center">
-                                    <span>💡 전구 B</span>
-                                    <span class="text-[9px] text-emerald-400 font-bold mt-0.5" id="break-status-1">정상</span>
-                                </button>
-                                <button onclick="toggleBulbBreak(2)" id="btn-break-2" class="p-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 opacity-40 text-slate-500 border border-slate-800 cursor-not-allowed transition flex flex-col items-center justify-center">
-                                    <span>💡 전구 C</span>
-                                    <span class="text-[9px] text-slate-500 font-bold mt-0.5" id="break-status-2">미사용</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Key Science Principle Quick Tip -->
-                    <div class="bg-gradient-to-br from-amber-500/10 via-slate-900 to-cyan-500/10 border border-amber-500/20 rounded-lg p-2 text-[10px] space-y-0.5">
-                        <div class="font-bold text-amber-400 flex items-center">
-                            <i class="fa-solid fa-graduation-cap mr-1 text-xs"></i>전류의 세기 법칙 (I)
-                        </div>
-                        <p class="text-slate-300 leading-tight text-[10px]" id="science-tip-text">
-                            <strong>직렬 연결:</strong> 회로의 모든 지점에서 전류의 세기가 같습니다 ($I = I_A = I_B$).<br>
-                            <strong>병렬 연결:</strong> 전체 전류는 각 가지에 흐르는 전류의 합과 같습니다 ($I_{전체} = I_A + I_B + I_C$).
-                        </p>
-                    </div>
-
-                </div>
             </div>
-        </div>
+        </section>
 
-        <!-- ==================== TAB 2: CONCEPT GUIDE ==================== -->
-        <div id="tab-content-guide" class="hidden space-y-4">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <h2 class="text-lg font-bold text-amber-400 flex items-center">
-                    <i class="fa-solid fa-book-open mr-2"></i>직렬연결과 병렬연결 비교 정리
-                </h2>
+        <!-- TAB 2: FIREBASE DATABASE LOGS -->
+        <section id="tab-dbLogs" class="hidden space-y-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-server text-indigo-400"></i>
+                            <span>Firebase Cloud Firestore 실시간 데이터 로그</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">가상실험실에서 저장된 측정 데이터가 실시간으로 수집되는 공간입니다.</p>
+                    </div>
+                    <button onclick="fetchDbLogsManual()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg border border-slate-600 transition-all flex items-center space-x-2">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>새로고침</span>
+                    </button>
+                </div>
 
-                <!-- Visual Comparison Table -->
+                <!-- Database Records Table -->
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs sm:text-sm text-slate-300 border-collapse">
-                        <thead>
-                            <tr class="bg-slate-950 text-slate-100 border-b border-slate-800">
-                                <th class="p-3 font-bold border-r border-slate-800">구분</th>
-                                <th class="p-3 font-bold text-amber-400 border-r border-slate-800">⚡ 직렬연결 (Series)</th>
-                                <th class="p-3 font-bold text-cyan-400">🔀 병렬연결 (Parallel)</th>
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-700">
+                            <tr>
+                                <th class="p-3">일시</th>
+                                <th class="p-3">회로 유형</th>
+                                <th class="p-3">전압 ($V$)</th>
+                                <th class="p-3">저항 ($R_1 / R_2$)</th>
+                                <th class="p-3">합성저항 ($R_{eq}$)</th>
+                                <th class="p-3">전체전류 ($I_{total}$)</th>
+                                <th class="p-3">전구1 전력 ($P_1$)</th>
+                                <th class="p-3">전구2 전력 ($P_2$)</th>
+                                <th class="p-3 text-right">작업</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-800/60 bg-slate-900/50">
+                        <tbody id="dbLogTableBody" class="divide-y divide-slate-700/60 font-mono">
                             <tr>
-                                <td class="p-3 font-semibold bg-slate-950/40 border-r border-slate-800">전류의 경로</td>
-                                <td class="p-3 border-r border-slate-800">전류가 흐르는 길이 <strong class="text-amber-300">오직 1개</strong></td>
-                                <td class="p-3">전류가 나누어 흐르는 길이 <strong class="text-cyan-300">여러 개</strong></td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 font-semibold bg-slate-950/40 border-r border-slate-800">합성 저항 ($R$)</td>
-                                <td class="p-3 border-r border-slate-800">전구를 추가할수록 전체 저항 증가 ($R = R_1 + R_2$)</td>
-                                <td class="p-3">전구를 추가할수록 전체 저항 감소 ($\frac{1}{R} = \frac{1}{R_1} + \frac{1}{R_2}$)</td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 font-semibold bg-slate-950/40 border-r border-slate-800">전구의 밝기</td>
-                                <td class="p-3 border-r border-slate-800">전구 개수가 늘어나면 <strong class="text-amber-300">어두워짐</strong></td>
-                                <td class="p-3">전구가 늘어나도 각 전구의 밝기는 <strong class="text-cyan-300">유지됨</strong></td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 font-semibold bg-slate-950/40 border-r border-slate-800">전구 하나가 끊어질 때</td>
-                                <td class="p-3 border-r border-slate-800 text-rose-400 font-semibold">전체 회로 차단 (모든 전구 꺼짐)</td>
-                                <td class="p-3 text-emerald-400 font-semibold">다른 가지는 정상 전류 흐름 (계속 켜짐)</td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 font-semibold bg-slate-950/40 border-r border-slate-800">생활 속 활용 예시</td>
-                                <td class="p-3 border-r border-slate-800">퓨즈, 장식용 미니 전구(일부), 화재경보기 스위치</td>
-                                <td class="p-3">가정집 콘센트, 건물 전등, 멀티탭, 가전제품</td>
+                                <td colspan="9" class="p-8 text-center text-slate-500 font-sans">
+                                    <i class="fa-solid fa-spinner fa-spin text-lg mb-2 block"></i>
+                                    데이터를 불러오는 중입니다...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Ohm's Law Key Formula Box -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-amber-400 text-xs mb-1">옴의 법칙 (Ohm's Law)</h4>
-                        <p class="text-xl font-black text-slate-100">$I = \frac{V}{R}$</p>
-                        <p class="text-[11px] text-slate-400 mt-1">전류의 세기는 전압에 비례하고, 저항에 반비례합니다.</p>
-                    </div>
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-amber-400 text-xs mb-1">직렬회로 전압 분배</h4>
-                        <p class="text-xl font-black text-slate-100">$V = V_1 + V_2$</p>
-                        <p class="text-[11px] text-slate-400 mt-1">전원 전압이 각 전구에 나뉘어 걸립니다.</p>
-                    </div>
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-cyan-400 text-xs mb-1">병렬회로 전압 유발</h4>
-                        <p class="text-xl font-black text-slate-100">$V = V_1 = V_2$</p>
-                        <p class="text-[11px] text-slate-400 mt-1">모든 병렬 가지에 동일한 전원 전압이 걸립니다.</p>
-                    </div>
-                </div>
             </div>
-        </div>
+        </section>
 
-        <!-- ==================== TAB 3: WORKSHEET ==================== -->
-        <div id="tab-content-worksheet" class="hidden space-y-4">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-file-pen text-amber-400 mr-2"></i>수업 탐구 활동지
+        <!-- TAB 3: SCIENCE INQUIRY REPORT FORM -->
+        <section id="tab-report" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Report Input Form -->
+                <div class="lg:col-span-6 bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-5">
+                    <div class="border-b border-slate-700 pb-3">
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-pen-to-square text-indigo-400"></i>
+                            <span>과학 탐구 보고서 작성 및 DB 제출</span>
                         </h2>
-                        <p class="text-xs text-slate-400">가상 실험실에서 관찰한 결과를 바탕으로 작성해보세요.</p>
+                        <p class="text-xs text-slate-400 mt-1">성취기준 [9과14-03] 저항의 연결에 따른 회로 특징 제출하기</p>
                     </div>
-                    <button onclick="copyWorksheetData()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 border border-slate-700 transition">
-                        <i class="fa-regular fa-copy mr-1"></i>작성 내용 클립보드 복사
-                    </button>
+
+                    <form id="reportForm" onsubmit="handleReportSubmit(event)" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">학번 / 이름</label>
+                                <input type="text" id="reportAuthor" required placeholder="예: 2학년 3반 홍길동" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">주요 탐구 회로</label>
+                                <select id="reportCircuitType" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="직렬 회로 및 병렬 회로 비교">직렬 vs 병렬 정량 비교</option>
+                                    <option value="직렬 회로의 특징 탐구">직렬 회로 집중 탐구</option>
+                                    <option value="병렬 회로의 독립성 탐구">병렬 회로 독립성 탐구</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">탐구 가설 (Hypothesis)</label>
+                            <textarea id="reportHypothesis" rows="2" required placeholder="예: 병렬 회로에서는 전구 저항이 변해도 다른 전구의 밝기가 일정할 것이다." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">관찰 결과 및 분석 (Observations)</label>
+                            <textarea id="reportObservation" rows="3" required placeholder="실험 데이터 및 소비전력 계산 결과를 적어주세요." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">최종 결론 및 실생활 적용 (Conclusion)</label>
+                            <textarea id="reportConclusion" rows="3" required placeholder="탐구 질문에 대한 결론과 멀티탭 등 실생활 사례 연결" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Firebase DB에 보고서 저장하기</span>
+                        </button>
+                    </form>
                 </div>
 
-                <!-- Worksheet Questions Form -->
-                <div class="space-y-4 text-xs sm:text-sm">
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                        <label class="font-bold text-amber-300 block">활동 1. 직렬회로에서 전구 개수를 늘릴 때 (1개 ➔ 2개 ➔ 3개)</label>
-                        <p class="text-slate-400 text-xs">전구의 밝기와 전체 전류(A) 수치는 어떻게 변화하나요?</p>
-                        <textarea id="ws-q1" rows="2" placeholder="예: 전구가 늘어날수록 전체 합성저항이 커져서 전류가 줄어들고, 전구의 밝기가 점차 어두워집니다." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 text-xs"></textarea>
-                    </div>
-
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                        <label class="font-bold text-cyan-300 block">활동 2. 병렬회로에서 전구 개수를 늘릴 때 (1개 ➔ 2개 ➔ 3개)</label>
-                        <p class="text-slate-400 text-xs">각 전구의 밝기와 전체 전류(A) 수치는 어떻게 변화하나요?</p>
-                        <textarea id="ws-q2" rows="2" placeholder="예: 병렬회로에서는 전구가 늘어나도 각 전구에 동일한 전압이 걸리므로 개별 밝기는 유지되며, 전체 전류는 증가합니다." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 text-xs"></textarea>
-                    </div>
-
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                        <label class="font-bold text-emerald-300 block">활동 3. 단선 가상 실험 (전구 1개 제거/고장시)</label>
-                        <p class="text-slate-400 text-xs">직렬회로와 병렬회로에서 전구 하나를 끊었을 때 각각 남은 전구는 어떻게 되나요?</p>
-                        <textarea id="ws-q3" rows="2" placeholder="예: 직렬회로는 경로가 끊겨 모든 전구가 꺼지지만, 병렬회로는 다른 가지의 길으로 전류가 계속 흘러 나머지 전구가 꺼지지 않습니다." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500 text-xs"></textarea>
-                    </div>
-
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                        <label class="font-bold text-yellow-300 block">활동 4. 결론 및 생활 속 응용</label>
-                        <p class="text-slate-400 text-xs">우리 집 전등이나 콘센트에는 왜 병렬연결 방식을 사용하는지 이유를 설명해봅시다.</p>
-                        <textarea id="ws-q4" rows="2" placeholder="예: 가전제품 하나를 꺼도 다른 제품을 독립적으로 사용할 수 있고, 모든 기기에 동일한 220V 전압이 공급되기 때문입니다." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-yellow-500 text-xs"></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== TAB 4: FORMATIVE QUIZ ==================== -->
-        <div id="tab-content-quiz" class="hidden space-y-4">
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-circle-question text-amber-400 mr-2"></i>형성 평가 퀴즈 (5문항)
+                <!-- Live Submitted Reports Feed -->
+                <div class="lg:col-span-6 bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="border-b border-slate-700 pb-3 flex justify-between items-center">
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-users text-indigo-400"></i>
+                            <span>제출된 탐구 보고서 피드</span>
                         </h2>
-                        <p class="text-xs text-slate-400">오늘 학습한 내용을 바탕으로 문제를 풀어보세요.</p>
+                        <span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded" id="reportCount">0건 제출됨</span>
                     </div>
-                    <div id="quiz-score-badge" class="px-3 py-1 rounded-xl bg-slate-950 border border-slate-800 font-bold text-amber-400 text-xs">
-                        점수: - / 100점
+
+                    <div id="submittedReportsList" class="space-y-4 max-h-[520px] overflow-y-auto pr-1">
+                        <div class="p-8 text-center text-slate-500">
+                            <i class="fa-solid fa-spinner fa-spin text-lg mb-2 block"></i>
+                            보고서 목록을 불러오는 중입니다...
+                        </div>
                     </div>
                 </div>
 
-                <!-- Quiz Container -->
-                <div id="quiz-list-container" class="space-y-4">
-                    <!-- Dynamic Rendered via JS -->
-                </div>
-
-                <div class="pt-2 flex justify-end">
-                    <button onclick="submitQuiz()" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition">
-                        정답 채점 및 제출
-                    </button>
-                </div>
             </div>
-        </div>
+        </section>
 
     </main>
 
-    <!-- Application Logic Script -->
-    <script>
-        // Core State Object
-        const state = {
-            mode: 'series',          // 'series' | 'parallel'
-            voltage: 3.0,            // Volts (1.5 ~ 12.0)
-            resistance: 10,          // Resistance per bulb in Ohms (2 ~ 30)
-            bulbs: 2,                // Bulb count (1 ~ 3)
-            switchClosed: true,      // true = ON, false = OFF
-            brokenBulbs: [false, false, false], // Individual bulb broke state [A, B, C]
-            currentTab: 'lab'
+    <!-- Firebase SDK Imports via Module Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // User Provided Firebase Config
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyBk_cz-lDs8r37M6JOJcyHl1hJmZhFOkQQ",
+            authDomain: "electricity-594d0.firebaseapp.com",
+            projectId: "electricity-594d0",
+            storageBucket: "electricity-594d0.firebasestorage.app",
+            messagingSenderId: "92419480022",
+            appId: "1:92419480022:web:0c625c3f21ed1360aa6c77",
+            measurementId: "G-6NEMZ7RLG8"
         };
 
-        function setVoltage(val) {
-            state.voltage = Math.max(1.5, Math.min(12.0, parseFloat(val)));
-            const slider = document.getElementById('input-voltage');
-            if (slider) slider.value = state.voltage;
-            updateLabParams();
+        // Initialize with system or fallback user config
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // App ID resolution
+        const appId = typeof __app_id !== 'undefined' ? __app_id : (firebaseConfig.projectId || 'electricity-594d0');
+
+        // Global variables state
+        window.firebaseApp = app;
+        window.firebaseDb = db;
+        window.firebaseAuth = auth;
+        window.currentUserId = null;
+
+        // Authenticate User
+        async function authenticateUser() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        return;
+                    } catch (tokenErr) {
+                        console.warn("Custom token auth failed, trying anonymous auth...", tokenErr);
+                    }
+                }
+                await signInAnonymously(auth);
+            } catch (err) {
+                console.warn("Firebase Auth Error (Fallback to Guest Mode):", err);
+                // Fallback if Auth provider/config is disabled in Firebase console
+                window.currentUserId = "guest_" + Math.random().toString(36).substring(2, 8);
+                document.getElementById('statusText').innerText = "연결됨 (게스트 모드)";
+                document.getElementById('statusDot').className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+                
+                // Initialize Firestore listeners even in guest mode
+                initFirestoreListeners();
+            }
         }
 
-        function adjustVoltage(delta) {
-            setVoltage(state.voltage + delta);
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUserId = user.uid;
+                document.getElementById('statusText').innerText = "Firebase 연동됨 (" + user.uid.substring(0, 6) + ")";
+                document.getElementById('statusDot').className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+                
+                // Start real-time Firestore listeners
+                initFirestoreListeners();
+            } else if (!window.currentUserId) {
+                document.getElementById('statusText').innerText = "연결 끊김";
+                document.getElementById('statusDot').className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+            }
+        });
+
+        // Firestore Collections according to RULE 1
+        function getExperimentCollection() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'circuit_experiments');
         }
 
-        function setResistance(val) {
-            state.resistance = Math.max(2, Math.min(30, parseInt(val)));
-            const slider = document.getElementById('input-resistance');
-            if (slider) slider.value = state.resistance;
-            updateLabParams();
+        function getReportCollection() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'student_reports');
         }
 
-        function adjustResistance(delta) {
-            setResistance(state.resistance + delta);
+        // Local Storage Fallback helpers
+        function getLocalLogs() {
+            return JSON.parse(localStorage.getItem('local_circuit_logs') || '[]');
+        }
+        function saveLocalLog(item) {
+            const logs = getLocalLogs();
+            logs.unshift(item);
+            localStorage.setItem('local_circuit_logs', JSON.stringify(logs));
+            renderDbLogs(logs);
+        }
+        function getLocalReports() {
+            return JSON.parse(localStorage.getItem('local_student_reports') || '[]');
+        }
+        function saveLocalReport(item) {
+            const reports = getLocalReports();
+            reports.unshift(item);
+            localStorage.setItem('local_student_reports', JSON.stringify(reports));
+            renderSubmittedReports(reports);
         }
 
-        function updateLabParams() {
-            const vInput = document.getElementById('input-voltage');
-            const rInput = document.getElementById('input-resistance');
-            if (vInput) state.voltage = parseFloat(vInput.value);
-            if (rInput) state.resistance = parseInt(rInput.value);
+        function initFirestoreListeners() {
+            // Listen to Experiment Logs
+            onSnapshot(getExperimentCollection(), (snapshot) => {
+                const logs = [];
+                snapshot.forEach(doc => {
+                    logs.push({ id: doc.id, ...doc.data() });
+                });
+                logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                renderDbLogs(logs);
+            }, (error) => {
+                console.warn("Firestore Experiment Listener Error (Using local storage):", error);
+                renderDbLogs(getLocalLogs());
+            });
 
-            const vNum = document.getElementById('val-voltage-num');
-            const rNum = document.getElementById('val-resistance-num');
-            if (vNum) vNum.innerText = `${state.voltage.toFixed(1)} V`;
-            if (rNum) rNum.innerText = `${state.resistance} Ω`;
+            // Listen to Student Reports
+            onSnapshot(getReportCollection(), (snapshot) => {
+                const reports = [];
+                snapshot.forEach(doc => {
+                    reports.push({ id: doc.id, ...doc.data() });
+                });
+                reports.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                renderSubmittedReports(reports);
+            }, (error) => {
+                console.warn("Firestore Report Listener Error (Using local storage):", error);
+                renderSubmittedReports(getLocalReports());
+            });
+        }
 
-            const bulbBadge = document.getElementById('bulb-count-badge');
-            if (bulbBadge) bulbBadge.innerText = `전구 ${state.bulbs}개 (${state.resistance} Ω)`;
+        // Global functions exposed to window
+        window.saveCurrentDataToFirebase = async function() {
+            const userId = auth.currentUser ? auth.currentUser.uid : (window.currentUserId || 'guest');
 
-            updateControlsUI();
-            renderCircuit();
+            const state = window.circuitState;
+            const logData = {
+                type: state.type === 'series' ? '직렬 회로' : '병렬 회로',
+                voltage: state.V,
+                r1: state.R1,
+                r2: state.R2,
+                req: state.Req,
+                itotal: state.Itotal,
+                v1: state.V1,
+                i1: state.I1,
+                p1: state.P1,
+                v2: state.V2,
+                i2: state.I2,
+                p2: state.P2,
+                timestamp: Date.now(),
+                userId: userId
+            };
+
+            try {
+                await addDoc(getExperimentCollection(), logData);
+                showToast("Firebase Cloud DB에 데이터가 기록되었습니다! 🚀");
+            } catch (e) {
+                console.warn("DB Save error, saving to local storage fallback:", e);
+                logData.id = "local_" + Date.now();
+                saveLocalLog(logData);
+                showToast("데이터가 기록되었습니다 (로컬 저장소) 💾");
+            }
+        };
+
+        window.deleteLogItem = async function(id) {
+            if (id.startsWith('local_')) {
+                const logs = getLocalLogs().filter(l => l.id !== id);
+                localStorage.setItem('local_circuit_logs', JSON.stringify(logs));
+                renderDbLogs(logs);
+                showToast("기록이 삭제되었습니다.");
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'circuit_experiments', id));
+                showToast("기록이 삭제되었습니다.");
+            } catch (e) {
+                console.error("Delete Log Error:", e);
+            }
+        };
+
+        window.deleteReportItem = async function(id) {
+            if (id.startsWith('local_')) {
+                const reports = getLocalReports().filter(r => r.id !== id);
+                localStorage.setItem('local_student_reports', JSON.stringify(reports));
+                renderSubmittedReports(reports);
+                showToast("보고서가 삭제되었습니다.");
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_reports', id));
+                showToast("보고서가 삭제되었습니다.");
+            } catch (e) {
+                console.error("Delete Report Error:", e);
+            }
+        };
+
+        window.handleReportSubmit = async function(e) {
+            e.preventDefault();
+            const userId = auth.currentUser ? auth.currentUser.uid : (window.currentUserId || 'guest');
+
+            const author = document.getElementById('reportAuthor').value;
+            const circuitType = document.getElementById('reportCircuitType').value;
+            const hypothesis = document.getElementById('reportHypothesis').value;
+            const observation = document.getElementById('reportObservation').value;
+            const conclusion = document.getElementById('reportConclusion').value;
+
+            const state = window.circuitState;
+
+            const reportData = {
+                author,
+                circuitType,
+                hypothesis,
+                observation,
+                conclusion,
+                snapshotState: {
+                    type: state.type,
+                    V: state.V,
+                    R1: state.R1,
+                    R2: state.R2,
+                    P1: state.P1,
+                    P2: state.P2
+                },
+                timestamp: Date.now(),
+                userId: userId
+            };
+
+            try {
+                await addDoc(getReportCollection(), reportData);
+                document.getElementById('reportForm').reset();
+                showToast("과학 탐구 보고서가 DB에 성공적으로 저장되었습니다!");
+            } catch (err) {
+                console.warn("Report submit DB error, saving locally:", err);
+                reportData.id = "local_" + Date.now();
+                saveLocalReport(reportData);
+                document.getElementById('reportForm').reset();
+                showToast("과학 탐구 보고서가 저장되었습니다 (로컬)!");
+            }
+        };
+
+        // Authenticate on startup
+        authenticateUser();
+    </script>
+
+    <!-- Application Logic & Physics Simulation Script -->
+    <script>
+        // Circuit State Object
+        window.circuitState = {
+            type: 'series', // 'series' or 'parallel'
+            V: 9.0,
+            R1: 10.0,
+            R2: 10.0,
+            mainSwitchOn: true,
+            // Calculated telemetry
+            Req: 20.0,
+            Itotal: 0.45,
+            V1: 4.5,
+            I1: 0.45,
+            P1: 2.025,
+            V2: 4.5,
+            I2: 0.45,
+            P2: 2.025
+        };
+
+        function setCircuitType(type) {
+            window.circuitState.type = type;
+            const sBtn = document.getElementById('typeSeriesBtn');
+            const pBtn = document.getElementById('typeParallelBtn');
+            const modeTag = document.getElementById('circuitModeTag');
+
+            if (type === 'series') {
+                sBtn.className = "py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-indigo-500 bg-indigo-600/30 text-white transition-all";
+                pBtn.className = "py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-slate-700 bg-slate-900/50 text-slate-400 hover:bg-slate-700 transition-all";
+                modeTag.innerText = "직렬 회로 시뮬레이션 중";
+            } else {
+                pBtn.className = "py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-indigo-500 bg-indigo-600/30 text-white transition-all";
+                sBtn.className = "py-2.5 px-3 rounded-xl font-medium text-sm border flex items-center justify-center space-x-2 border-slate-700 bg-slate-900/50 text-slate-400 hover:bg-slate-700 transition-all";
+                modeTag.innerText = "병렬 회로 시뮬레이션 중";
+            }
+
+            updateCircuit();
         }
 
         function toggleMainSwitch() {
-            state.switchClosed = !state.switchClosed;
-            const switchBtn = document.getElementById('btn-main-switch');
-            const switchLabel = document.getElementById('switch-text-label');
-            if (state.switchClosed) {
-                if (switchBtn) switchBtn.className = "px-3 py-1 rounded-lg text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5";
-                if (switchLabel) switchLabel.innerText = "스위치: 닫힘 (ON)";
-                showToast('스위치를 닫았습니다 (전원 연결)');
+            window.circuitState.mainSwitchOn = !window.circuitState.mainSwitchOn;
+            const btn = document.getElementById('mainSwitchBtn');
+            if (window.circuitState.mainSwitchOn) {
+                btn.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+                btn.innerHTML = `<i class="fa-solid fa-power-off mr-1"></i> ON`;
             } else {
-                if (switchBtn) switchBtn.className = "px-3 py-1 rounded-lg text-xs font-black bg-rose-500 hover:bg-rose-400 text-slate-100 shadow-lg shadow-rose-500/20 transition flex items-center space-x-1.5";
-                if (switchLabel) switchLabel.innerText = "스위치: 열림 (OFF)";
-                showToast('스위치를 열었습니다 (전원 차단)');
+                btn.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40";
+                btn.innerHTML = `<i class="fa-solid fa-power-off mr-1"></i> OFF`;
             }
-            renderCircuit();
+            updateCircuit();
         }
 
-        function toggleBulbBreak(index) {
-            if (index >= state.bulbs) return;
-            state.brokenBulbs[index] = !state.brokenBulbs[index];
-            const status = state.brokenBulbs[index] ? '단선(고장)' : '복구';
-            showToast(`전구 ${String.fromCharCode(65 + index)} 상태: ${status}`);
-            updateControlsUI();
-            renderCircuit();
-        }
+        function updateCircuit() {
+            const V = parseFloat(document.getElementById('inputVoltage').value);
+            const R1 = parseFloat(document.getElementById('inputR1').value);
+            const R2 = parseFloat(document.getElementById('inputR2').value);
 
-        // DOM Loaded Init
-        window.addEventListener('DOMContentLoaded', () => {
-            initApp();
-            renderQuiz();
-            startAnimationLoop();
-        });
+            document.getElementById('valVoltage').innerText = V.toFixed(1) + " V";
+            document.getElementById('valR1').innerText = R1.toFixed(1) + " Ω";
+            document.getElementById('valR2').innerText = R2.toFixed(1) + " Ω";
 
-        function initApp() {
-            updateControlsUI();
-            renderCircuit();
-        }
+            const s = window.circuitState;
+            s.V = V;
+            s.R1 = R1;
+            s.R2 = R2;
 
-        function switchTab(tabId) {
-            state.currentTab = tabId;
-            const tabs = ['lab', 'guide', 'worksheet', 'quiz'];
-            tabs.forEach(t => {
-                const btn = document.getElementById(`tab-btn-${t}`);
-                const content = document.getElementById(`tab-content-${t}`);
-                if (t === tabId) {
-                    btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 bg-amber-500 text-slate-950 shadow";
-                    content.classList.remove('hidden');
-                } else {
-                    btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center space-x-1";
-                    content.classList.add('hidden');
-                }
-            });
-        }
-
-        function setCircuitMode(mode) {
-            state.mode = mode;
-            const seriesBtn = document.getElementById('mode-btn-series');
-            const parallelBtn = document.getElementById('mode-btn-parallel');
-            const labTitle = document.getElementById('lab-title-text');
-            const tipText = document.getElementById('science-tip-text');
-
-            if (mode === 'series') {
-                seriesBtn.className = "px-3 py-1 rounded-md text-xs font-bold bg-amber-500 text-slate-950 shadow transition";
-                parallelBtn.className = "px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition";
-                labTitle.innerText = "직렬 회로 시뮬레이션";
-                tipText.innerHTML = "<strong>직렬 연결:</strong> 전류가 흐르는 길이 1개입니다. 전구가 늘어날수록 전체 합성 저항이 커져 전류가 줄어들고 밝기가 감소합니다. 한 전구가 끊어지면 전체가 꺼집니다.";
-                showToast('직렬 회로 모드로 변경되었습니다.');
+            if (!s.mainSwitchOn) {
+                s.Req = s.type === 'series' ? (R1 + R2) : (R1 * R2) / (R1 + R2);
+                s.Itotal = 0;
+                s.V1 = 0; s.I1 = 0; s.P1 = 0;
+                s.V2 = 0; s.I2 = 0; s.P2 = 0;
             } else {
-                seriesBtn.className = "px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition";
-                parallelBtn.className = "px-3 py-1 rounded-md text-xs font-bold bg-cyan-400 text-slate-950 shadow transition";
-                labTitle.innerText = "병렬 회로 시뮬레이션";
-                tipText.innerHTML = "<strong>병렬 연결:</strong> 전류가 나뉘어 흐르는 경로가 여러 개입니다. 전구가 늘어나도 각 전구에는 전원 전압이 그대로 걸려 밝기가 유지되고, 한 전구가 끊어져도 다른 가지는 정상 동작합니다.";
-                
-                // 병렬 연결 탐구를 위해 전구가 1개인 경우 최소 2개로 자동 변경
-                if (state.bulbs < 2) {
-                    state.bulbs = 2;
+                if (s.type === 'series') {
+                    s.Req = R1 + R2;
+                    s.Itotal = V / s.Req;
+                    s.V1 = s.Itotal * R1;
+                    s.I1 = s.Itotal;
+                    s.P1 = s.V1 * s.I1;
+
+                    s.V2 = s.Itotal * R2;
+                    s.I2 = s.Itotal;
+                    s.P2 = s.V2 * s.I2;
+                } else { // Parallel
+                    s.Req = (R1 * R2) / (R1 + R2);
+                    s.V1 = V;
+                    s.I1 = V / R1;
+                    s.P1 = s.V1 * s.I1;
+
+                    s.V2 = V;
+                    s.I2 = V / R2;
+                    s.P2 = s.V2 * s.I2;
+
+                    s.Itotal = s.I1 + s.I2;
                 }
-                showToast('병렬 회로 모드로 전환되어 전구 2개가 설정되었습니다.');
             }
 
-            updateControlsUI();
-            renderCircuit();
+            // Update Telemetry Display
+            document.getElementById('gaugeReq').innerText = s.Req.toFixed(2) + " Ω";
+            document.getElementById('gaugeItotal').innerText = s.Itotal.toFixed(2) + " A";
+            document.getElementById('gaugeP1').innerText = s.P1.toFixed(2) + " W";
+            document.getElementById('subGauge1').innerText = `V1: ${s.V1.toFixed(1)}V / I1: ${s.I1.toFixed(2)}A`;
+            document.getElementById('gaugeP2').innerText = s.P2.toFixed(2) + " W";
+            document.getElementById('subGauge2').innerText = `V2: ${s.V2.toFixed(1)}V / I2: ${s.I2.toFixed(2)}A`;
+
+            // Draw Circuit SVG
+            drawCircuitSvg();
         }
 
-        function setBulbs(count) {
-            if (state.mode === 'parallel' && count < 2) {
-                state.bulbs = 2;
-                showToast('병렬 연결은 나란한 경로 비교를 위해 최소 2개의 전구가 필요합니다.');
+        function drawCircuitSvg() {
+            const svg = document.getElementById('circuitSvg');
+            const s = window.circuitState;
+
+            // Power brightness glow factor (0 to 1)
+            const glow1 = Math.min(s.P1 / 15.0, 1.0);
+            const glow2 = Math.min(s.P2 / 15.0, 1.0);
+
+            const isFlowing = s.mainSwitchOn && s.Itotal > 0;
+            const wireClass = isFlowing ? "wire-animated stroke-amber-400" : "stroke-slate-600";
+
+            let html = '';
+
+            if (s.type === 'series') {
+                // Series Circuit SVG
+                html = `
+                    <!-- Main Wire Frame -->
+                    <rect x="70" y="50" width="460" height="220" rx="16" fill="none" stroke-width="4" class="${wireClass}" />
+
+                    <!-- Battery / Power Source (Left) -->
+                    <g transform="translate(60, 130)">
+                        <rect x="0" y="0" width="20" height="60" rx="4" class="fill-slate-700 stroke-amber-400 stroke-2" />
+                        <text x="10" y="-10" text-anchor="middle" class="fill-amber-400 font-bold text-xs">${s.V.toFixed(1)}V</text>
+                        <text x="-12" y="25" class="fill-amber-400 font-bold text-xs">+</text>
+                        <text x="-12" y="50" class="fill-slate-400 font-bold text-xs">-</text>
+                    </g>
+
+                    <!-- Bulb 1 (Top Branch) -->
+                    <g transform="translate(220, 50)">
+                        <circle cx="0" cy="0" r="24" class="fill-slate-900 stroke-sky-400 stroke-2" />
+                        <!-- Glowing aura -->
+                        ${s.P1 > 0 ? `<circle cx="0" cy="0" r="${24 + glow1 * 20}" fill="rgba(56, 189, 248, ${0.1 + glow1 * 0.5})" class="glow-bulb"/>` : ''}
+                        <path d="M -12 -12 L 12 12 M -12 12 L 12 -12" stroke="#38bdf8" stroke-width="3" />
+                        <text x="0" y="-34" text-anchor="middle" class="fill-sky-400 font-bold text-xs">전구 1 (${s.R1.toFixed(0)}Ω)</text>
+                        <text x="0" y="40" text-anchor="middle" class="fill-sky-300 text-[11px] font-mono">${s.P1.toFixed(1)}W</text>
+                    </g>
+
+                    <!-- Bulb 2 (Top Branch) -->
+                    <g transform="translate(380, 50)">
+                        <circle cx="0" cy="0" r="24" class="fill-slate-900 stroke-emerald-400 stroke-2" />
+                        ${s.P2 > 0 ? `<circle cx="0" cy="0" r="${24 + glow2 * 20}" fill="rgba(52, 211, 153, ${0.1 + glow2 * 0.5})" class="glow-bulb"/>` : ''}
+                        <path d="M -12 -12 L 12 12 M -12 12 L 12 -12" stroke="#34d399" stroke-width="3" />
+                        <text x="0" y="-34" text-anchor="middle" class="fill-emerald-400 font-bold text-xs">전구 2 (${s.R2.toFixed(0)}Ω)</text>
+                        <text x="0" y="40" text-anchor="middle" class="fill-emerald-300 text-[11px] font-mono">${s.P2.toFixed(1)}W</text>
+                    </g>
+
+                    <!-- Ammeter (Bottom) -->
+                    <g transform="translate(300, 270)">
+                        <circle cx="0" cy="0" r="20" class="fill-slate-900 stroke-amber-400 stroke-2" />
+                        <text x="0" y="5" text-anchor="middle" class="fill-amber-400 font-bold text-xs">A</text>
+                        <text x="0" y="36" text-anchor="middle" class="fill-amber-300 text-[11px] font-mono">${s.Itotal.toFixed(2)} A</text>
+                    </g>
+                `;
             } else {
-                state.bulbs = count;
-            }
-            updateLabParams();
-        }
+                // Parallel Circuit SVG
+                html = `
+                    <!-- Battery Wire Outer Ring -->
+                    <path d="M 120 160 L 70 160 L 70 60 L 530 60 L 530 160 L 480 160" fill="none" stroke-width="4" class="${wireClass}" />
+                    <path d="M 70 260 L 530 260" fill="none" stroke-width="4" class="${wireClass}" />
 
-        function updateControlsUI() {
-            // Voltage preset highlight
-            [1.5, 3.0, 6.0, 9.0, 12.0].forEach(v => {
-                const btn = document.getElementById(`v-preset-${v.toFixed(1)}`);
-                if (btn) {
-                    if (Math.abs(state.voltage - v) < 0.1) {
-                        btn.className = "px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-500 text-slate-950 shadow transition";
-                    } else {
-                        btn.className = "px-2 py-0.5 text-[10px] font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition";
-                    }
-                }
-            });
+                    <!-- Branch 1 Vertical Wire -->
+                    <path d="M 230 60 L 230 260" fill="none" stroke-width="4" class="${wireClass}" />
+                    <!-- Branch 2 Vertical Wire -->
+                    <path d="M 390 60 L 390 260" fill="none" stroke-width="4" class="${wireClass}" />
 
-            // Resistance preset highlight
-            [5, 10, 15, 20, 30].forEach(r => {
-                const btn = document.getElementById(`r-preset-${r}`);
-                if (btn) {
-                    if (state.resistance === r) {
-                        btn.className = "px-2 py-0.5 text-[10px] font-bold rounded-lg bg-cyan-400 text-slate-950 shadow transition";
-                    } else {
-                        btn.className = "px-2 py-0.5 text-[10px] font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition";
-                    }
-                }
-            });
+                    <!-- Battery Left -->
+                    <g transform="translate(60, 130)">
+                        <rect x="0" y="0" width="20" height="60" rx="4" class="fill-slate-700 stroke-amber-400 stroke-2" />
+                        <text x="10" y="-10" text-anchor="middle" class="fill-amber-400 font-bold text-xs">${s.V.toFixed(1)}V</text>
+                    </g>
 
-            // Bulb count buttons highlight
-            [1, 2, 3].forEach(b => {
-                const btn = document.getElementById(`b-preset-${b}`);
-                if (btn) {
-                    if (state.mode === 'parallel' && b === 1) {
-                        btn.className = "flex-1 py-1 text-xs font-medium rounded-lg bg-slate-800/40 text-slate-500 border border-slate-800 cursor-not-allowed transition";
-                    } else if (state.bulbs === b) {
-                        btn.className = "flex-1 py-1 text-xs font-bold rounded-lg bg-yellow-400 text-slate-950 shadow transition";
-                    } else {
-                        btn.className = "flex-1 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition";
-                    }
-                }
-            });
+                    <!-- Bulb 1 (Branch 1) -->
+                    <g transform="translate(230, 160)">
+                        <circle cx="0" cy="0" r="24" class="fill-slate-900 stroke-sky-400 stroke-2" />
+                        ${s.P1 > 0 ? `<circle cx="0" cy="0" r="${24 + glow1 * 20}" fill="rgba(56, 189, 248, ${0.1 + glow1 * 0.5})" class="glow-bulb"/>` : ''}
+                        <path d="M -12 -12 L 12 12 M -12 12 L 12 -12" stroke="#38bdf8" stroke-width="3" />
+                        <text x="-35" y="0" text-anchor="end" class="fill-sky-400 font-bold text-xs">가지 1</text>
+                        <text x="35" y="0" text-anchor="start" class="fill-sky-300 text-[11px] font-mono">${s.P1.toFixed(1)}W</text>
+                    </g>
 
-            // Bulb break buttons status
-            for (let i = 0; i < 3; i++) {
-                const btn = document.getElementById(`btn-break-${i}`);
-                const statusSpan = document.getElementById(`break-status-${i}`);
-                if (i < state.bulbs) {
-                    btn.classList.remove('opacity-40', 'cursor-not-allowed');
-                    if (state.brokenBulbs[i]) {
-                        btn.className = "p-2 text-xs font-semibold rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-600/50 transition flex flex-col items-center justify-center";
-                        statusSpan.className = "text-[10px] text-rose-400 font-bold mt-0.5";
-                        statusSpan.innerText = "단선 (고장)";
-                    } else {
-                        btn.className = "p-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex flex-col items-center justify-center";
-                        statusSpan.className = "text-[10px] text-emerald-400 font-bold mt-0.5";
-                        statusSpan.innerText = "연결 정상";
-                    }
-                } else {
-                    btn.className = "p-2 text-xs font-semibold rounded-xl bg-slate-800/40 opacity-40 text-slate-500 border border-slate-800 cursor-not-allowed transition flex flex-col items-center justify-center";
-                    statusSpan.className = "text-[10px] text-slate-500 font-bold mt-0.5";
-                    statusSpan.innerText = "미사용";
-                }
-            }
-        }
+                    <!-- Bulb 2 (Branch 2) -->
+                    <g transform="translate(390, 160)">
+                        <circle cx="0" cy="0" r="24" class="fill-slate-900 stroke-emerald-400 stroke-2" />
+                        ${s.P2 > 0 ? `<circle cx="0" cy="0" r="${24 + glow2 * 20}" fill="rgba(52, 211, 153, ${0.1 + glow2 * 0.5})" class="glow-bulb"/>` : ''}
+                        <path d="M -12 -12 L 12 12 M -12 12 L 12 -12" stroke="#34d399" stroke-width="3" />
+                        <text x="-35" y="0" text-anchor="end" class="fill-emerald-400 font-bold text-xs">가지 2</text>
+                        <text x="35" y="0" text-anchor="start" class="fill-emerald-300 text-[11px] font-mono">${s.P2.toFixed(1)}W</text>
+                    </g>
 
-        let electronAnimFrame = 0;
-
-        function startAnimationLoop() {
-            electronAnimFrame++;
-            renderCircuit();
-            requestAnimationFrame(startAnimationLoop);
-        }
-
-        function renderCircuit() {
-            const svg = document.getElementById('circuit-svg');
-            if (!svg) return;
-
-            // Calculations
-            let totalR = 0;
-            let totalI = 0;
-            let isCircuitActive = state.switchClosed;
-
-            if (state.mode === 'series') {
-                // Any broken bulb breaks series circuit
-                let anyBroken = false;
-                for (let i = 0; i < state.bulbs; i++) {
-                    if (state.brokenBulbs[i]) anyBroken = true;
-                }
-                if (anyBroken) isCircuitActive = false;
-
-                totalR = state.bulbs * state.resistance;
-                totalI = isCircuitActive ? (state.voltage / totalR) : 0;
-            } else {
-                // Parallel mode
-                let activeBranchCount = 0;
-                for (let i = 0; i < state.bulbs; i++) {
-                    if (!state.brokenBulbs[i]) activeBranchCount++;
-                }
-
-                if (activeBranchCount === 0) isCircuitActive = false;
-
-                if (activeBranchCount > 0) {
-                    totalR = state.resistance / activeBranchCount;
-                    totalI = isCircuitActive ? (state.voltage / totalR) : 0;
-                } else {
-                    totalR = Infinity;
-                    totalI = 0;
-                }
-            }
-
-            // Dashboard Stats Update
-            const totalmA = (totalI * 1000).toFixed(0);
-            document.getElementById('stat-voltage').innerText = `${state.voltage.toFixed(1)} V`;
-            document.getElementById('stat-resistance').innerText = totalR === Infinity ? '∞ Ω' : `${totalR.toFixed(1)} Ω`;
-            document.getElementById('stat-current').innerText = `${totalI.toFixed(2)} A (${totalmA} mA)`;
-
-            const statStatus = document.getElementById('stat-status');
-            if (!state.switchClosed) {
-                statStatus.innerText = "스위치 열림 (OFF)";
-                statStatus.className = "text-xs sm:text-sm font-bold text-rose-400 mt-0.5";
-            } else if (totalI === 0) {
-                statStatus.innerText = "회로 끊김 (단선)";
-                statStatus.className = "text-xs sm:text-sm font-bold text-rose-400 mt-0.5";
-            } else {
-                statStatus.innerText = "정상 작동 중";
-                statStatus.className = "text-xs sm:text-sm font-bold text-emerald-400 mt-0.5";
-            }
-
-            // Draw SVG
-            let svgHtml = ``;
-
-            // Main wire loop paths
-            if (state.mode === 'series') {
-                svgHtml += drawSeriesCircuitSVG(totalI, isCircuitActive);
-            } else {
-                svgHtml += drawParallelCircuitSVG(totalI, isCircuitActive);
-            }
-
-            svg.innerHTML = svgHtml;
-        }
-
-        function drawSeriesCircuitSVG(totalI, isCircuitActive) {
-            let html = ``;
-            const mainPath = "M 80 280 L 80 80 L 620 80 L 620 280 L 80 280";
-
-            // Wire line
-            html += `<path d="${mainPath}" fill="none" stroke="#334155" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
-
-            // Active wire glow
-            if (isCircuitActive && totalI > 0) {
-                html += `<path d="${mainPath}" fill="none" stroke="#0ea5e9" stroke-width="3" opacity="0.6" stroke-linecap="round"/>`;
-            }
-
-            // Battery (Left side: x=80, y=180)
-            html += drawBatterySVG(80, 180, state.voltage);
-
-            // Switch (Bottom side: x=240, y=280)
-            html += drawSwitchSVG(240, 280, state.switchClosed);
-
-            // Main Ammeter on Bottom Wire (x=500, y=280)
-            html += drawAmmeterSVG(500, 280, totalI, "전체 전류계 (I)");
-
-            // Bulbs on Top Wire (y=80)
-            const bulbSpacing = 540 / (state.bulbs + 1);
-            for (let i = 0; i < state.bulbs; i++) {
-                const bx = 80 + bulbSpacing * (i + 1);
-                const isBroken = state.brokenBulbs[i];
-                const bulbI = (isCircuitActive && !isBroken) ? totalI : 0;
-                const bulbV = isCircuitActive ? (state.voltage / state.bulbs) : 0;
-                html += drawBulbSVG(bx, 80, String.fromCharCode(65 + i), bulbI, bulbV, isBroken);
-            }
-
-            // Electrons Flow
-            if (isCircuitActive && totalI > 0) {
-                const speed = Math.min(totalI * 2.5, 8);
-                const offset = (electronAnimFrame * speed) % 100;
-                html += drawElectronsOnPath(mainPath, offset);
-            }
-
-            return html;
-        }
-
-        function drawParallelCircuitSVG(totalI, isCircuitActive) {
-            let html = ``;
-
-            // Outer Frame Loop
-            const outerPath = "M 80 300 L 80 60 L 620 60 L 620 300 L 80 300";
-            html += `<path d="${outerPath}" fill="none" stroke="#334155" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
-
-            // Battery (Left side: x=80, y=180)
-            html += drawBatterySVG(80, 180, state.voltage);
-
-            // Switch (Bottom side: x=220, y=300)
-            html += drawSwitchSVG(220, 300, state.switchClosed);
-
-            // Main Ammeter on Trunk Wire (x=520, y=300)
-            html += drawAmmeterSVG(520, 300, totalI, "전체 전류계 (I_전체)");
-
-            // Parallel Branches
-            const branchYs = state.bulbs === 1 ? [60] : (state.bulbs === 2 ? [60, 180] : [60, 140, 220]);
-
-            branchYs.forEach((y, i) => {
-                if (y !== 60) {
-                    html += `<path d="M 180 ${y} L 520 ${y}" fill="none" stroke="#334155" stroke-width="5"/>`;
-                    html += `<path d="M 180 60 L 180 ${y}" fill="none" stroke="#334155" stroke-width="5"/>`;
-                    html += `<path d="M 520 60 L 520 ${y}" fill="none" stroke="#334155" stroke-width="5"/>`;
-                }
-
-                const isBroken = state.brokenBulbs[i];
-                const branchI = (isCircuitActive && !isBroken) ? (state.voltage / state.resistance) : 0;
-                const branchV = isCircuitActive ? state.voltage : 0;
-
-                // Bulb
-                html += drawBulbSVG(380, y, String.fromCharCode(65 + i), branchI, branchV, isBroken);
-
-                // Branch Ammeter
-                html += drawAmmeterSVG(250, y, branchI, `가지 ${String.fromCharCode(65 + i)} 전류계`);
-            });
-
-            // Electrons Flow on Main Trunk
-            if (isCircuitActive && totalI > 0) {
-                const speed = Math.min(totalI * 1.5, 8);
-                const offset = (electronAnimFrame * speed) % 100;
-                html += drawElectronsOnPath(outerPath, offset);
-            }
-
-            return html;
-        }
-
-        function drawAmmeterSVG(x, y, current, label) {
-            const mA = (current * 1000).toFixed(0);
-            const aVal = current.toFixed(2);
-            return `
-                <g transform="translate(${x}, ${y})">
-                    <!-- Ammeter Base Circle -->
-                    <circle cx="0" cy="0" r="16" fill="#0f172a" stroke="#10b981" stroke-width="2.5"/>
-                    <text x="0" y="-3" fill="#10b981" font-size="11" font-weight="900" text-anchor="middle">A</text>
-                    <text x="0" y="7" fill="#64748b" font-size="7" font-weight="800" text-anchor="middle">전류계</text>
-                    
-                    <!-- Value Badge Box -->
-                    <rect x="-36" y="18" width="72" height="17" rx="5" fill="#020617" stroke="#10b981" stroke-width="1.2"/>
-                    <text x="0" y="30" fill="#34d399" font-size="9" font-weight="800" text-anchor="middle">${aVal}A (${mA}mA)</text>
-                    
-                    ${label ? `<text x="0" y="-20" fill="#94a3b8" font-size="9" font-weight="bold" text-anchor="middle">${label}</text>` : ''}
-                </g>
-            `;
-        }
-
-        function drawBatterySVG(x, y, voltage) {
-            return `
-                <g transform="translate(${x}, ${y})">
-                    <!-- Battery Body -->
-                    <rect x="-18" y="-35" width="36" height="70" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="3"/>
-                    <line x1="-10" y1="-18" x2="10" y2="-18" stroke="#f59e0b" stroke-width="4"/>
-                    <line x1="-16" y1="-5" x2="16" y2="-5" stroke="#f59e0b" stroke-width="2"/>
-                    <line x1="-10" y1="8" x2="10" y2="8" stroke="#f59e0b" stroke-width="4"/>
-                    <line x1="-16" y1="20" x2="16" y2="20" stroke="#f59e0b" stroke-width="2"/>
-                    <!-- Labels -->
-                    <text x="0" y="-42" fill="#fbbf24" font-size="11" font-weight="900" text-anchor="middle">+ (전원)</text>
-                    <text x="0" y="52" fill="#fbbf24" font-size="11" font-weight="900" text-anchor="middle">${voltage.toFixed(1)}V</text>
-                </g>
-            `;
-        }
-
-        function drawSwitchSVG(x, y, isClosed) {
-            return `
-                <g transform="translate(${x}, ${y})">
-                    <rect x="-40" y="-18" width="80" height="36" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-                    <circle cx="-22" cy="0" r="5" fill="#10b981"/>
-                    <circle cx="22" cy="0" r="5" fill="#10b981"/>
-                    <!-- Lever -->
-                    <line x1="-22" y1="0" x2="20" y2="${isClosed ? 0 : -22}" stroke="${isClosed ? '#10b981' : '#f43f5e'}" stroke-width="4" stroke-linecap="round"/>
-                    <text x="0" y="26" fill="#94a3b8" font-size="10" font-weight="bold" text-anchor="middle">${isClosed ? '스위치 [ON]' : '스위치 [OFF]'}</text>
-                </g>
-            `;
-        }
-
-        function drawBulbSVG(x, y, label, current, voltage, isBroken) {
-            // OFF or Broken Bulb State
-            if (isBroken || current <= 0 || voltage <= 0) {
-                return `
-                    <g transform="translate(${x}, ${y})">
-                        <circle cx="0" cy="0" r="18" fill="#0f172a" stroke="${isBroken ? '#ef4444' : '#475569'}" stroke-width="2.5"/>
-                        ${isBroken ? `
-                            <path d="M -8 4 L -2 -2 M 2 -2 L 8 4" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-                            <text x="0" y="-24" fill="#f87171" font-size="10" font-weight="bold" text-anchor="middle">❌ 단선</text>
-                        ` : `
-                            <path d="M -7 6 L -3 -4 L 0 2 L 3 -4 L 7 6" fill="none" stroke="#475569" stroke-width="2"/>
-                        `}
-                        <text x="0" y="-24" fill="#94a3b8" font-size="11" font-weight="800" text-anchor="middle">전구 ${label}</text>
-                        <text x="0" y="32" fill="#64748b" font-size="10" font-weight="700" text-anchor="middle">0V / 0A (꺼짐)</text>
+                    <!-- Main Ammeter -->
+                    <g transform="translate(300, 260)">
+                        <circle cx="0" cy="0" r="18" class="fill-slate-900 stroke-amber-400 stroke-2" />
+                        <text x="0" y="4" text-anchor="middle" class="fill-amber-400 font-bold text-xs">A</text>
+                        <text x="0" y="32" text-anchor="middle" class="fill-amber-300 text-[11px] font-mono">${s.Itotal.toFixed(2)} A</text>
                     </g>
                 `;
             }
 
-            // Power calculation (P = V * I)
-            const power = current * voltage; // Watts
-            
-            // Dynamic non-linear power normalization scale (9V ~ 12V 고전력 구간 차별화)
-            const pNorm = Math.min(3.2, Math.pow(power / 0.9, 0.38));
-
-            // Halo Radii based on normalized power
-            const halo1Radius = 18 + pNorm * 18;
-            const halo2Radius = 25 + pNorm * 35;
-            const halo3Radius = 35 + pNorm * 55;
-
-            // Halo Opacities
-            const halo1Opacity = Math.min(0.9, 0.2 + pNorm * 0.25);
-            const halo2Opacity = Math.min(0.7, 0.1 + pNorm * 0.20);
-            const halo3Opacity = Math.min(0.5, 0.05 + pNorm * 0.15);
-
-            // Color stages depending on power level (12V 최고 밝기 구간 추가)
-            let glassFill = "#78350f";
-            let strokeColor = "#f59e0b";
-            let filamentColor = "#fbbf24";
-
-            if (pNorm > 2.5) {
-                // Ultra intense brilliant white-gold (12V 초고전력 - 눈부신 백색)
-                glassFill = "#ffffff";
-                strokeColor = "#ffffff";
-                filamentColor = "#ffffff";
-            } else if (pNorm > 1.8) {
-                // Very bright yellow-white (9V 고전력 - 선명한 연노랑)
-                glassFill = "#fef08a";
-                strokeColor = "#facc15";
-                filamentColor = "#ffffff";
-            } else if (pNorm > 0.85) {
-                glassFill = "#f59e0b"; // Warm vivid gold (3V~6V)
-                strokeColor = "#fbbf24";
-                filamentColor = "#fef08a";
-            } else if (pNorm > 0.3) {
-                glassFill = "#b45309"; // Medium amber
-                strokeColor = "#f59e0b";
-                filamentColor = "#fde047";
-            } else {
-                glassFill = "#451a03"; // Dim reddish amber
-                strokeColor = "#d97706";
-                filamentColor = "#f97316";
-            }
-
-            // Dynamic Light Rays (Starburst Spikes)
-            let rayLines = "";
-            if (pNorm > 0.25) {
-                const rayLen = 4 + pNorm * 14;
-                const rayOpacity = Math.min(0.95, (pNorm - 0.2) * 0.6);
-                const rayCount = pNorm > 2.2 ? 16 : (pNorm > 1.4 ? 12 : 8);
-                const angleStep = 360 / rayCount;
-                for (let a = 0; a < 360; a += angleStep) {
-                    const rad = (a * Math.PI) / 180;
-                    const x1 = Math.cos(rad) * 21;
-                    const y1 = Math.sin(rad) * 21;
-                    const x2 = Math.cos(rad) * (21 + rayLen);
-                    const y2 = Math.sin(rad) * (21 + rayLen);
-                    rayLines += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${pNorm > 2.5 ? '#ffffff' : '#fef08a'}" stroke-width="${(1.0 + pNorm * 0.8).toFixed(1)}" opacity="${rayOpacity.toFixed(2)}" stroke-linecap="round"/>`;
-                }
-            }
-
-            return `
-                <g transform="translate(${x}, ${y})">
-                    <!-- Ambient Outer Glow 3 Layers -->
-                    <circle cx="0" cy="0" r="${halo3Radius.toFixed(1)}" fill="${pNorm > 2.5 ? '#ffffff' : '#f59e0b'}" opacity="${halo3Opacity.toFixed(2)}"/>
-                    <circle cx="0" cy="0" r="${halo2Radius.toFixed(1)}" fill="${pNorm > 2.5 ? '#fef08a' : '#fbbf24'}" opacity="${halo2Opacity.toFixed(2)}"/>
-                    <circle cx="0" cy="0" r="${halo1Radius.toFixed(1)}" fill="#fef08a" opacity="${halo1Opacity.toFixed(2)}"/>
-
-                    <!-- Starburst Light Rays -->
-                    ${rayLines}
-
-                    <!-- Glass Bulb -->
-                    <circle cx="0" cy="0" r="18" fill="${glassFill}" stroke="${strokeColor}" stroke-width="3"/>
-
-                    <!-- Filament -->
-                    <path d="M -7 6 L -3 -4 L 0 2 L 3 -4 L 7 6" fill="none" stroke="${filamentColor}" stroke-width="2.5" stroke-linecap="round"/>
-
-                    <!-- Label & Measured Specs -->
-                    <text x="0" y="-24" fill="#f8fafc" font-size="11" font-weight="800" text-anchor="middle">전구 ${label}</text>
-                    <text x="0" y="32" fill="#22d3ee" font-size="10" font-weight="700" text-anchor="middle">${voltage.toFixed(1)}V / ${current.toFixed(2)}A</text>
-                    <text x="0" y="44" fill="#f59e0b" font-size="9" font-weight="800" text-anchor="middle">(${power.toFixed(2)}W)</text>
-                </g>
-            `;
+            svg.innerHTML = html;
         }
 
-        function drawElectronsOnPath(pathD, offsetPercent) {
-            return `<path d="${pathD}" fill="none" stroke="#22d3ee" stroke-width="4" stroke-dasharray="8 16" stroke-dashoffset="-${offsetPercent}" opacity="0.9" stroke-linecap="round"/>`;
+        function renderDbLogs(logs) {
+            const tbody = document.getElementById('dbLogTableBody');
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 font-sans">저장된 데이터 로그가 없습니다. 가상실험실에서 측정치를 기록해보세요!</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-slate-700/30 transition-colors">
+                    <td class="p-3 text-slate-400 text-[11px]">${new Date(log.timestamp || Date.now()).toLocaleTimeString()}</td>
+                    <td class="p-3 font-sans"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.type === '직렬 회로' ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700' : 'bg-emerald-900/60 text-emerald-300 border border-emerald-700'}">${log.type}</span></td>
+                    <td class="p-3 text-amber-400">${(log.voltage || 0).toFixed(1)} V</td>
+                    <td class="p-3 text-slate-300">${(log.r1 || 0).toFixed(0)}Ω / ${(log.r2 || 0).toFixed(0)}Ω</td>
+                    <td class="p-3 text-indigo-300">${(log.req || 0).toFixed(2)} Ω</td>
+                    <td class="p-3 text-amber-300">${(log.itotal || 0).toFixed(2)} A</td>
+                    <td class="p-3 text-sky-400">${(log.p1 || 0).toFixed(2)} W</td>
+                    <td class="p-3 text-emerald-400">${(log.p2 || 0).toFixed(2)} W</td>
+                    <td class="p-3 text-right font-sans">
+                        <button onclick="deleteLogItem('${log.id}')" class="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSubmittedReports(reports) {
+            const list = document.getElementById('submittedReportsList');
+            document.getElementById('reportCount').innerText = `${reports.length}건 제출됨`;
+
+            if (reports.length === 0) {
+                list.innerHTML = `<div class="p-8 text-center text-slate-500">아직 제출된 탐구 보고서가 없습니다. 첫 보고서를 제출해보세요!</div>`;
+                return;
+            }
+
+            list.innerHTML = reports.map(r => `
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 space-y-3 relative">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-400">${r.author}</span>
+                            <span class="text-[10px] text-slate-500 ml-2">${new Date(r.timestamp || Date.now()).toLocaleDateString()}</span>
+                            <h4 class="text-xs font-bold text-white mt-0.5">${r.circuitType}</h4>
+                        </div>
+                        <button onclick="deleteReportItem('${r.id}')" class="text-slate-500 hover:text-rose-400 text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs">
+                        <div class="bg-slate-800/80 p-2 rounded border border-slate-700/50">
+                            <span class="font-semibold text-amber-400 block text-[11px]">가설:</span>
+                            <p class="text-slate-300">${r.hypothesis}</p>
+                        </div>
+                        <div class="bg-slate-800/80 p-2 rounded border border-slate-700/50">
+                            <span class="font-semibold text-sky-400 block text-[11px]">관찰 및 분석:</span>
+                            <p class="text-slate-300">${r.observation}</p>
+                        </div>
+                        <div class="bg-slate-800/80 p-2 rounded border border-slate-700/50">
+                            <span class="font-semibold text-emerald-400 block text-[11px]">결론 및 적용:</span>
+                            <p class="text-slate-300">${r.conclusion}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-simulator').classList.add('hidden');
+            document.getElementById('tab-dbLogs').classList.add('hidden');
+            document.getElementById('tab-report').classList.add('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 bg-slate-700/50 text-slate-300 hover:bg-slate-700 transition-all";
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tabBtn-${tabId}`).className = "tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 bg-indigo-600 text-white transition-all";
         }
 
         function showToast(msg) {
-            const toast = document.getElementById('canvas-toast');
-            const msgEl = document.getElementById('toast-msg');
-            if (!toast || !msgEl) return;
-            msgEl.innerText = msg;
-            toast.classList.remove('opacity-0', 'pointer-events-none');
-            toast.classList.add('opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0', 'pointer-events-none');
-            }, 2000);
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-5 right-5 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-2xl z-50 text-xs font-semibold flex items-center space-x-2 animate-bounce";
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${msg}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        function copyWorksheetData() {
-            const q1 = document.getElementById('ws-q1')?.value || '';
-            const q2 = document.getElementById('ws-q2')?.value || '';
-            const q3 = document.getElementById('ws-q3')?.value || '';
-            const q4 = document.getElementById('ws-q4')?.value || '';
-            const text = `[중학교 과학 탐구 활동지 작성 결과]\n\n1. 직렬회로 전구 증가 시:\n${q1}\n\n2. 병렬회로 전구 증가 시:\n${q2}\n\n3. 단선 실험 결과:\n${q3}\n\n4. 결론 및 생활 속 응용:\n${q4}`;
-            
-            const tempInput = document.createElement('textarea');
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-            showToast('활동지 내용이 클립보드에 복사되었습니다.');
-        }
-
-        const quizData = [
-            {
-                id: 1,
-                question: "직렬 연결된 회로에서 전구의 개수를 늘리면 전체 합성 저항과 전체 전류는 어떻게 되나요?",
-                options: [
-                    "합성 저항 증가, 전체 전류 감소",
-                    "합성 저항 감소, 전체 전류 증가",
-                    "합성 저항 감소, 전체 전류 감소",
-                    "합성 저항과 전체 전류 모두 변화 없음"
-                ],
-                answer: 0,
-                explanation: "직렬 연결은 전류의 경로가 1개이므로 전구가 늘어날수록 합성 저항이 커져($R = R_1 + R_2 + ...$) 전체 전류가 감소합니다."
-            },
-            {
-                id: 2,
-                question: "병렬 회로의 특징으로 옳은 것은 무엇인가요?",
-                options: [
-                    "전구 하나가 끊어지면 회로 전체가 차단된다.",
-                    "전구를 추가할수록 전체 합성 저항이 커진다.",
-                    "각 병렬 가지에 공급되는 전압은 전원 전압과 같다.",
-                    "전구를 추가할수록 개별 전구가 점차 어두워진다."
-                ],
-                answer: 2,
-                explanation: "병렬회로에서는 각 병렬 가지마다 동일한 전원 전압이 그대로 걸립니다."
-            },
-            {
-                id: 3,
-                question: "가정집의 콘센트나 전등에 병렬연결을 사용하는 주요 이유가 아닌 것은?",
-                options: [
-                    "각 전기기구를 독립적으로 켜고 끌 수 있다.",
-                    "하나의 기기가 고장 나도 다른 기기는 정상 작동한다.",
-                    "모든 기기에 동일한 220V 전압이 걸린다.",
-                    "전기기구를 많이 켤수록 전체 전력 소비가 줄어든다."
-                ],
-                answer: 3,
-                explanation: "병렬연결에서 기기를 많이 켜면 전체 전류와 consumption이 증가하지 줄어들지 않습니다."
-            },
-            {
-                id: 4,
-                question: "전압이 6.0V이고 전구의 저항이 10Ω일 때, 옴의 법칙(I = V / R)에 따른 전류의 세기는?",
-                options: [
-                    "0.15 A",
-                    "0.30 A",
-                    "0.60 A",
-                    "1.20 A"
-                ],
-                answer: 2,
-                explanation: "I = V / R = 6.0V / 10Ω = 0.60A 입니다."
-            },
-            {
-                id: 5,
-                question: "직렬회로에서 전구 A, B 중 전구 A의 필라멘트가 끊어졌을 때 일어나는 현상은?",
-                options: [
-                    "전구 B만 더 밝아진다.",
-                    "전구 B는 원래 밝기로 계속 켜진다.",
-                    "전류의 길이 끊겨 전구 B도 꺼진다.",
-                    "전원 전압이 2배로 증가한다."
-                ],
-                answer: 2,
-                explanation: "직렬 연결은 전류의 경로가 단 1개이므로 한 곳이라도 단선되면 회로 전체에 전류가 흐르지 않아 모든 전구가 꺼집니다."
-            }
-        ];
-
-        function renderQuiz() {
-            const container = document.getElementById('quiz-list-container');
-            if (!container) return;
-            
-            let html = '';
-            quizData.forEach((q, idx) => {
-                html += `
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                        <p class="font-bold text-slate-100 text-xs sm:text-sm">
-                            <span class="text-amber-400 font-extrabold mr-1">Q${idx + 1}.</span> ${q.question}
-                        </p>
-                        <div class="space-y-1.5 pt-1">
-                `;
-                q.options.forEach((opt, oIdx) => {
-                    html += `
-                        <label class="flex items-center p-2 rounded-lg bg-slate-900 hover:bg-slate-800/80 cursor-pointer border border-slate-800 transition text-xs">
-                            <input type="radio" name="quiz-q-${q.id}" value="${oIdx}" class="accent-amber-400 mr-2.5">
-                            <span class="text-slate-300">${opt}</span>
-                        </label>
-                    `;
-                });
-                html += `
-                        </div>
-                        <div id="quiz-result-${q.id}" class="hidden p-2 rounded-lg text-xs mt-2"></div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function submitQuiz() {
-            let score = 0;
-            quizData.forEach((q) => {
-                const selected = document.querySelector(`input[name="quiz-q-${q.id}"]:checked`);
-                const resultDiv = document.getElementById(`quiz-result-${q.id}`);
-                if (!resultDiv) return;
-                
-                resultDiv.classList.remove('hidden', 'bg-emerald-950/80', 'text-emerald-300', 'border-emerald-500/50', 'bg-rose-950/80', 'text-rose-300', 'border-rose-500/50');
-                
-                if (selected && parseInt(selected.value) === q.answer) {
-                    score += 20;
-                    resultDiv.className = "p-2 rounded-lg text-xs mt-2 bg-emerald-950/80 text-emerald-300 border border-emerald-500/50";
-                    resultDiv.innerHTML = `<i class="fa-solid fa-circle-check mr-1 text-emerald-400"></i> <strong>정답입니다!</strong> ${q.explanation}`;
-                } else {
-                    resultDiv.className = "p-2 rounded-lg text-xs mt-2 bg-rose-950/80 text-rose-300 border border-rose-500/50";
-                    resultDiv.innerHTML = `<i class="fa-solid fa-circle-xmark mr-1 text-rose-400"></i> <strong>오답입니다.</strong> (정답: ${q.options[q.answer]})<br><span class="text-[11px] opacity-90">${q.explanation}</span>`;
-                }
-            });
-
-            const badge = document.getElementById('quiz-score-badge');
-            if (badge) {
-                badge.innerText = `점수: ${score} / 100점`;
-                if (score >= 80) {
-                    badge.className = "px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 font-bold text-emerald-400 text-xs";
-                } else {
-                    badge.className = "px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 font-bold text-amber-400 text-xs";
-                }
-            }
-            showToast(`채점이 완료되었습니다. (점수: ${score}점)`);
-        }
+        // On Window Load
+        window.onload = function() {
+            updateCircuit();
+        };
     </script>
 </body>
 </html>
